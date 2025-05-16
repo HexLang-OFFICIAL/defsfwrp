@@ -133,7 +133,7 @@
 
     async function setup() {
       appendEntry("ai", "Loading model... ⏳", avatars[selectedCharacter]);
-      generator = await pipeline("text-generation", "Xenova/gpt2-medium");
+      generator = await pipeline("text-generation", "Xenova/gpt2");
       appendEntry("ai", "Model loaded ✅", avatars[selectedCharacter]);
     }
 
