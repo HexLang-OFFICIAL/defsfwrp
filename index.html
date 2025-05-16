@@ -1,142 +1,181 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>SmolLM 360M Chatbot with Fallback</title>
+  <meta charset="UTF-8">
+  <title>RP Character AI Chat</title>
   <style>
-    body {
-      background: #121212;
-      color: #eee;
-      font-family: monospace;
-      margin: 0; padding: 1rem;
-      display: flex; flex-direction: column; height: 100vh;
+    body { font-family: 'Segoe UI', sans-serif; background: #1a1a1a; color: #fff; margin: 0; padding: 0; }
+    header { background: #272727; padding: 1em; text-align: center; }
+    h1 { margin: 0; font-size: 1.5em; }
+    #character-select { display: flex; justify-content: center; padding: 1em; gap: 1em; }
+    .char-card { cursor: pointer; background: #333; border: 2px solid #444; border-radius: 8px; padding: 1em; width: 150px; text-align: center; transition: 0.2s; }
+    .char-card:hover, .char-card.selected { border-color: #0af; background: #444; }
+    .char-card img { border-radius: 50%; width: 80px; height: 80px; margin-bottom: 0.5em; }
+
+    #chatbox { max-height: 60vh; overflow-y: auto; padding: 1em; background: #111; margin: 1em; border-radius: 10px; }
+    .msg { margin: 1em 0; }
+    .msg.user { text-align: right; color: #8be9fd; }
+    .msg.bot { text-align: left; color: #f1fa8c; }
+    .msg img { max-width: 200px; border-radius: 8px; margin-top: 0.5em; }
+
+    #input-area { display: flex; gap: 0.5em; padding: 1em; }
+    input, button {
+      padding: 0.8em; font-size: 1em; border-radius: 6px; border: none;
     }
-    #log {
-      flex-grow: 1;
-      background: #222;
-      padding: 1rem;
-      border-radius: 8px;
-      overflow-y: auto;
-      white-space: pre-wrap;
-      margin-bottom: 1rem;
-      border: 1px solid #555;
-    }
-    #input-container {
-      display: flex; gap: 0.5rem;
-    }
-    input {
-      flex-grow: 1;
-      padding: 0.5rem;
-      border-radius: 8px;
-      border: none;
-      font-size: 1rem;
-      background: #333;
-      color: #eee;
-    }
-    button {
-      background: #7c52ff;
-      border: none;
-      border-radius: 8px;
-      padding: 0 1rem;
-      color: white;
-      font-size: 1rem;
-      cursor: pointer;
-    }
-    button:disabled {
-      background: #555;
-      cursor: not-allowed;
-    }
+    input { flex: 1; background: #222; color: #fff; }
+    button { background: #0af; color: #fff; cursor: pointer; }
   </style>
 </head>
 <body>
+<header>
+  <h1>🎭 Roleplay Character Chat</h1>
+</header>
 
-<h1>SmolLM 360M Chatbot with Fallback</h1>
-<div id="log">Checking for WebGPU support...</div>
+<div id="character-select"></div>
 
-<div id="input-container">
-  <input id="prompt" placeholder="Say something..." disabled autocomplete="off"/>
-  <button id="sendBtn" disabled>Send</button>
+<div id="chatbox"></div>
+
+<div id="input-area">
+  <input id="userInput" placeholder="Say something..." onkeydown="if(event.key==='Enter') sendMessage()">
+  <button onclick="sendMessage()">Send</button>
+  <button onclick="generateImage()">🎨</button>
 </div>
 
-<script type="module">
-  import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.3.0/dist/transformers.min.js';
-
-  const log = document.getElementById('log');
-  const promptInput = document.getElementById('prompt');
-  const sendBtn = document.getElementById('sendBtn');
-
-  let generator;
-
-  function appendLog(sender, text) {
-    log.textContent += `\n${sender}: ${text}`;
-    log.scrollTop = log.scrollHeight;
-  }
-
-  async function tryLoadModel() {
-    try {
-      // First, check if browser supports WebGPU
-      if (navigator.gpu) {
-        log.textContent = 'WebGPU supported. Loading model with WebGPU backend...';
-        env.backends = ['webgpu', 'cpu']; // prioritize webgpu
-      } else {
-        log.textContent = 'WebGPU NOT supported. Falling back to CPU backend...';
-        env.backends = ['cpu']; // fallback to CPU
-      }
-
-      generator = await pipeline('text-generation', 'HuggingFaceTB/SmolLM-360M-Instruct', {
-  progress_callback(progress) {
-    if (typeof progress === 'number' && !isNaN(progress)) {
-      log.textContent = `Loading model... ${(progress * 100).toFixed(0)}%`;
-    } else {
-      log.textContent = `Loading model... please wait...`;
-    }
+<script>
+const characters = {
+  luna: {
+    name: "Luna",
+    avatar: "https://placekitten.com/100/100",
+    prompt: "You are Luna, a sassy vampire barista who loves sarcasm and hates decaf.nsfw",
   },
-});
+  rax: {
+    name: "Rax",
+    avatar: "https://placebear.com/100/100",
+    prompt: "You are Rax, a grumpy alien warlord who adores opera and insults.nsfw",
+  },
+  nova: {
+    name: "Nova",
+    avatar: "https://placebeard.it/100x100",
+    prompt: "You are Nova, a kind AI therapist who speaks calmly and listens deeply.nsfw",
+  },
+};
 
-      appendLog('System', 'Model loaded! You can chat now.');
-      promptInput.disabled = false;
-      sendBtn.disabled = false;
-      promptInput.focus();
-    } catch (e) {
-      appendLog('System', `Failed to load model: ${e.message}`);
-    }
+let selectedChar = null;
+let history = [];
+
+const selDiv = document.getElementById('character-select');
+const chatbox = document.getElementById('chatbox');
+
+for (let key in characters) {
+  const char = characters[key];
+  const div = document.createElement('div');
+  div.className = 'char-card';
+  div.innerHTML = `<img src="${char.avatar}"><br>${char.name}`;
+  div.onclick = () => selectChar(key, div);
+  selDiv.appendChild(div);
+}
+
+function selectChar(key, element) {
+  document.querySelectorAll('.char-card').forEach(card => card.classList.remove('selected'));
+  element.classList.add('selected');
+  selectedChar = characters[key];
+  history = [];
+  chatbox.innerHTML = '';
+  saveChat();
+  showMsg('bot', `You are now chatting with ${selectedChar.name}.`);
+}
+
+function showMsg(sender, text, img = null) {
+  const div = document.createElement('div');
+  div.className = 'msg ' + sender;
+  div.innerText = text;
+  if (img) {
+    const image = document.createElement('img');
+    image.src = img;
+    div.appendChild(image);
   }
+  chatbox.appendChild(div);
+  chatbox.scrollTop = chatbox.scrollHeight;
+}
 
-  async function sendMessage() {
-    const text = promptInput.value.trim();
-    if (!text) return;
-    appendLog('You', text);
-    promptInput.value = '';
-    promptInput.disabled = true;
-    sendBtn.disabled = true;
+function saveChat() {
+  if (!selectedChar) return;
+  localStorage.setItem('chat_' + selectedChar.name, JSON.stringify(history));
+}
 
-    try {
-      const output = await generator(text, {
-        max_new_tokens: 60,
-        do_sample: true,
-        temperature: 0.7,
-        top_p: 0.9,
-      });
-      const response = output[0].generated_text.slice(text.length).trim();
-      appendLog('AI', response || '[No response]');
-    } catch (e) {
-      appendLog('System', 'Error generating response: ' + e.message);
-    } finally {
-      promptInput.disabled = false;
-      sendBtn.disabled = false;
-      promptInput.focus();
-    }
+function loadChat() {
+  if (!selectedChar) return;
+  const saved = localStorage.getItem('chat_' + selectedChar.name);
+  if (saved) {
+    history = JSON.parse(saved);
+    chatbox.innerHTML = '';
+    history.forEach(item => showMsg(item.sender, item.text));
   }
+}
 
-  sendBtn.addEventListener('click', sendMessage);
-  promptInput.addEventListener('keydown', e => {
-    if (e.key === 'Enter' && !sendBtn.disabled) {
-      sendMessage();
-    }
+async function sendMessage() {
+  const input = document.getElementById('userInput');
+  const userText = input.value.trim();
+  if (!userText || !selectedChar) return;
+  input.value = '';
+  showMsg('user', userText);
+  history.push({ sender: 'user', text: userText });
+
+  const fullPrompt = `${selectedChar.prompt}\n\n${history.map(m => `${m.sender === 'user' ? 'You' : selectedChar.name}: ${m.text}`).join('\n')}\n${selectedChar.name}:`;
+  const payload = {
+    model: "openai-large",
+    prompt: fullPrompt,
+    options: { temperature: 0.7, max_length: 100 }
+  };
+
+  try {
+    const res = await fetch("https://text.pollinations.ai/openai", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    const text = await res.text();
+    const reply = text.trim().split('\n')[0];
+    showMsg('bot', reply);
+    history.push({ sender: 'bot', text: reply });
+    saveChat();
+  } catch (e) {
+    showMsg('bot', "⚠️ AI error!");
+    console.error(e);
+  }
+}
+
+async function generateImage() {
+  if (!selectedChar) return alert("Pick a character first!");
+  const prompt = `${selectedChar.name} from our roleplay chat`;
+  showMsg('bot', "Generating image...");
+
+  const res = await fetch("https://stablehorde.net/api/v2/generate/async", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      prompt: prompt,
+      params: { steps: 20 },
+      nsfw: false
+    })
   });
 
-  tryLoadModel();
-</script>
+  const data = await res.json();
+  const id = data.id;
 
+  const poll = async () => {
+    const res = await fetch(`https://stablehorde.net/api/v2/generate/status/${id}`);
+    const result = await res.json();
+    if (result.done) {
+      const imgUrl = result.generations[0].img;
+      showMsg('bot', "Here's an image of the moment:", imgUrl);
+    } else {
+      setTimeout(poll, 3000);
+    }
+  };
+
+  poll();
+}
+</script>
 </body>
 </html>
