@@ -2,22 +2,14 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>O?WGI?</title>
+  <title>SmolLM 360M Chatbot</title>
   <style>
     body {
-      background: #111;
+      background: #121212;
       color: #eee;
-      font-family: monospace, monospace;
-      padding: 1rem;
-      display: flex;
-      flex-direction: column;
-      height: 100vh;
-      margin: 0;
-    }
-    h1 {
-      text-align: center;
-      color: #7f5af0;
-      margin-bottom: 1rem;
+      font-family: monospace;
+      margin: 0; padding: 1rem;
+      display: flex; flex-direction: column; height: 100vh;
     }
     #log {
       flex-grow: 1;
@@ -27,107 +19,97 @@
       overflow-y: auto;
       white-space: pre-wrap;
       margin-bottom: 1rem;
-      font-size: 1rem;
-      line-height: 1.3;
-      border: 1px solid #444;
+      border: 1px solid #555;
     }
     #input-container {
-      display: flex;
-      gap: 0.5rem;
+      display: flex; gap: 0.5rem;
     }
-    input#prompt {
+    input {
       flex-grow: 1;
-      font-size: 1rem;
       padding: 0.5rem;
       border-radius: 8px;
       border: none;
-      outline: none;
+      font-size: 1rem;
       background: #333;
       color: #eee;
     }
-    button#sendBtn {
-      background: #7f5af0;
-      color: white;
+    button {
+      background: #7c52ff;
       border: none;
-      padding: 0 1rem;
       border-radius: 8px;
-      cursor: pointer;
+      padding: 0 1rem;
+      color: white;
       font-size: 1rem;
-      transition: background 0.2s ease;
+      cursor: pointer;
     }
-    button#sendBtn:disabled {
+    button:disabled {
       background: #555;
       cursor: not-allowed;
-    }
-    button#sendBtn:hover:not(:disabled) {
-      background: #6a42e5;
     }
   </style>
 </head>
 <body>
 
-<h1>Offline? We Got It.</h1>
+<h1>SmolLM 360M Chatbot</h1>
 <div id="log">Loading model... please wait.</div>
 
 <div id="input-container">
-  <input type="text" id="prompt" placeholder="Type your message..." disabled autocomplete="off" />
+  <input id="prompt" placeholder="Say something..." disabled autocomplete="off"/>
   <button id="sendBtn" disabled>Send</button>
 </div>
 
 <script type="module">
-  import { GPT4All } from 'https://cdn.jsdelivr.net/npm/gpt4all-js@0.2.5/dist/gpt4all.min.js';
+  import { pipeline } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.3.0/dist/transformers.min.js';
 
   const log = document.getElementById('log');
   const promptInput = document.getElementById('prompt');
   const sendBtn = document.getElementById('sendBtn');
 
-  let gpt4all;
+  let generator;
 
-  function appendMessage(sender, text) {
+  // Append text to chat log with auto scroll
+  function appendLog(sender, text) {
     log.textContent += `\n${sender}: ${text}`;
     log.scrollTop = log.scrollHeight;
   }
 
   async function loadModel() {
     try {
-      // Create GPT4All instance
-      gpt4all = new GPT4All();
-
-      // Load a small model from URL (can swap for your own model URL)
-      // Model: GPT4All Llama2 7B
-      await gpt4all.loadModel({
-        model: 'https://gpt4all.io/models/gpt4all-lora-quantized.bin',
+      // This loads SmolLM 360M Instruct model with WebGPU backend
+      generator = await pipeline('text-generation', 'HuggingFaceTB/SmolLM-360M-Instruct', {
+        progress_callback(progress) {
+          log.textContent = `Loading model... ${(progress * 100).toFixed(0)}%`;
+        }
       });
-
-      appendMessage('System', 'Model loaded! You can chat now.');
+      appendLog('System', 'Model loaded! You can chat now.');
       promptInput.disabled = false;
       sendBtn.disabled = false;
       promptInput.focus();
     } catch (e) {
-      appendMessage('System', `Failed to load model: ${e.message}`);
+      appendLog('System', 'Failed to load model: ' + e.message);
     }
   }
 
   async function sendMessage() {
-    const userText = promptInput.value.trim();
-    if (!userText) return;
-
-    appendMessage('You', userText);
+    const text = promptInput.value.trim();
+    if (!text) return;
+    appendLog('You', text);
     promptInput.value = '';
     promptInput.disabled = true;
     sendBtn.disabled = true;
 
     try {
-      // Generate response
-      const response = await gpt4all.generate(userText, {
-        maxTokens: 100,
+      // Generate with tuned parameters for better responses
+      const output = await generator(text, {
+        max_new_tokens: 60,
+        do_sample: true,
         temperature: 0.7,
         top_p: 0.9,
       });
-
-      appendMessage('AI', response);
+      const response = output[0].generated_text.slice(text.length).trim();
+      appendLog('AI', response || '[No response]');
     } catch (e) {
-      appendMessage('System', `Error generating response: ${e.message}`);
+      appendLog('System', 'Error generating response: ' + e.message);
     } finally {
       promptInput.disabled = false;
       sendBtn.disabled = false;
