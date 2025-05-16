@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <title>NSFW RP Chat with WebGPU & WebLLM</title>
-  <script src="https://mlc.ai/web-llm/dist/index.js"></script>
+  <script src="https://unpkg.com/@mlc-ai/web-llm@latest/dist/index.min.js"></script>
   <style>
     body {
       background: #111;
@@ -160,7 +160,7 @@
     // Initialize WebLLM and load model
     async function init() {
       chatlog.innerHTML = "<em>Loading model... ⏳</em>";
-      model = await webllm.createChatWorker("TinyLlama-1.1B-Chat-q4f32_1");
+      model = await mlc.llm.createChatWorker("TinyLlama-1.1B-Chat-q4f32_1");
       chatlog.innerHTML += "<div><em>Model ready ✅</em></div>";
     }
 
