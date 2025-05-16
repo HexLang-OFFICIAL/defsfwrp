@@ -2,88 +2,145 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>DistilGPT-2 Chatbot</title>
+  <title>O?WGI?</title>
   <style>
-    body { background: #1a1a1a; color: #eee; font-family: monospace; padding: 1rem; }
-    #log { white-space: pre-wrap; max-height: 70vh; overflow-y: auto; border: 1px solid #444; padding: 1rem; border-radius: 6px; background: #262626; }
-    input, button { font-size: 1rem; padding: 0.5rem; margin-top: 1rem; width: 100%; border-radius: 6px; border: none; }
-    button { background: #6c47ff; color: white; cursor: pointer; }
+    body {
+      background: #111;
+      color: #eee;
+      font-family: monospace, monospace;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      margin: 0;
+    }
+    h1 {
+      text-align: center;
+      color: #7f5af0;
+      margin-bottom: 1rem;
+    }
+    #log {
+      flex-grow: 1;
+      background: #222;
+      padding: 1rem;
+      border-radius: 8px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      margin-bottom: 1rem;
+      font-size: 1rem;
+      line-height: 1.3;
+      border: 1px solid #444;
+    }
+    #input-container {
+      display: flex;
+      gap: 0.5rem;
+    }
+    input#prompt {
+      flex-grow: 1;
+      font-size: 1rem;
+      padding: 0.5rem;
+      border-radius: 8px;
+      border: none;
+      outline: none;
+      background: #333;
+      color: #eee;
+    }
+    button#sendBtn {
+      background: #7f5af0;
+      color: white;
+      border: none;
+      padding: 0 1rem;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: background 0.2s ease;
+    }
+    button#sendBtn:disabled {
+      background: #555;
+      cursor: not-allowed;
+    }
+    button#sendBtn:hover:not(:disabled) {
+      background: #6a42e5;
+    }
   </style>
 </head>
 <body>
 
-<h1>DistilGPT-2 Web Chat</h1>
-<div id="log">Loading model... please wait</div>
+<h1>Offline? We Got It.</h1>
+<div id="log">Loading model... please wait.</div>
 
-<input type="text" id="prompt" placeholder="Type a message..." disabled />
-<button id="sendBtn" disabled>Send</button>
+<div id="input-container">
+  <input type="text" id="prompt" placeholder="Type your message..." disabled autocomplete="off" />
+  <button id="sendBtn" disabled>Send</button>
+</div>
 
 <script type="module">
-  import { pipeline } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.3.0/dist/transformers.min.js';
+  import { GPT4All } from 'https://cdn.jsdelivr.net/npm/gpt4all-js@0.2.5/dist/gpt4all.min.js';
 
   const log = document.getElementById('log');
   const promptInput = document.getElementById('prompt');
   const sendBtn = document.getElementById('sendBtn');
 
-  let generator;
-  let chatHistory = [];
+  let gpt4all;
 
-  function logMessage(msg) {
-    log.textContent += '\n' + msg;
+  function appendMessage(sender, text) {
+    log.textContent += `\n${sender}: ${text}`;
     log.scrollTop = log.scrollHeight;
-  }
-
-  function formatChatPrompt(userInput) {
-    // Keep it under control with clear roles
-    chatHistory.push(`User: ${userInput}`);
-    return chatHistory.slice(-6).join('\n') + `\nAI:`; // last 3 exchanges
   }
 
   async function loadModel() {
     try {
-      generator = await pipeline('text-generation', 'xenova/distilgpt2');
-      logMessage('Model loaded! You can chat now.');
+      // Create GPT4All instance
+      gpt4all = new GPT4All();
+
+      // Load a small model from URL (can swap for your own model URL)
+      // Model: GPT4All Llama2 7B
+      await gpt4all.loadModel({
+        model: 'https://gpt4all.io/models/gpt4all-lora-quantized.bin',
+      });
+
+      appendMessage('System', 'Model loaded! You can chat now.');
       promptInput.disabled = false;
       sendBtn.disabled = false;
       promptInput.focus();
     } catch (e) {
-      logMessage('Failed to load model: ' + e.message);
+      appendMessage('System', `Failed to load model: ${e.message}`);
     }
   }
 
-  sendBtn.onclick = async () => {
-    const text = promptInput.value.trim();
-    if (!text) return;
-    logMessage('You: ' + text);
+  async function sendMessage() {
+    const userText = promptInput.value.trim();
+    if (!userText) return;
+
+    appendMessage('You', userText);
     promptInput.value = '';
     promptInput.disabled = true;
     sendBtn.disabled = true;
 
-    const promptText = formatChatPrompt(text);
-
     try {
-      const output = await generator(promptText, {
-        max_new_tokens: 60,
-        do_sample: true,
-        top_p: 0.85,        // tighter than 0.9
-        temperature: 0.6,   // more "sane"
-        repetition_penalty: 1.2,  // avoids looping
-        stop: ['\nUser:']   // cuts off when it thinks it's your turn
+      // Generate response
+      const response = await gpt4all.generate(userText, {
+        maxTokens: 100,
+        temperature: 0.7,
+        top_p: 0.9,
       });
 
-      let raw = output[0].generated_text;
-      let response = raw.slice(promptText.length).trim().split('\n')[0]; // get only the first response line
-
-      logMessage('AI: ' + (response || '[no response]'));
-      chatHistory.push(`AI: ${response}`);
+      appendMessage('AI', response);
     } catch (e) {
-      logMessage('Error generating response: ' + e.message);
+      appendMessage('System', `Error generating response: ${e.message}`);
     } finally {
       promptInput.disabled = false;
       sendBtn.disabled = false;
       promptInput.focus();
     }
-  };
+  }
+
+  sendBtn.addEventListener('click', sendMessage);
+  promptInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !sendBtn.disabled) {
+      sendMessage();
+    }
+  });
 
   loadModel();
 </script>
