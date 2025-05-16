@@ -2,53 +2,28 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>🔥 NFW RP Chat Deluxe</title>
+  <title>NSFW RP Chat with WebGPU & WebLLM</title>
   <script src="https://mlc.ai/web-llm/dist/index.js"></script>
   <style>
-    :root {
-      --bg-color: #111;
-      --text-color: #eee;
-      --user-bg: #0a84ff;
-      --ai-bg: #444;
-      --accent-color: #e84393;
-    }
-    [data-theme="light"] {
-      --bg-color: #fff;
-      --text-color: #222;
-      --user-bg: #0080ff;
-      --ai-bg: #ddd;
-      --accent-color: #d6336c;
-    }
     body {
-      background: var(--bg-color);
-      color: var(--text-color);
+      background: #111;
+      color: #eee;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       margin: 0; padding: 1rem;
       display: flex; flex-direction: column; height: 100vh;
-      transition: background 0.3s, color 0.3s;
     }
     #chatlog {
       flex: 1;
       overflow-y: auto;
-      background: var(--ai-bg);
+      background: #222;
       padding: 1rem;
       border-radius: 8px;
       margin-bottom: 1rem;
-      scrollbar-width: thin;
-      scrollbar-color: var(--accent-color) transparent;
-    }
-    #chatlog::-webkit-scrollbar {
-      width: 8px;
-    }
-    #chatlog::-webkit-scrollbar-thumb {
-      background-color: var(--accent-color);
-      border-radius: 10px;
     }
     #input-area {
       display: flex;
       gap: 0.5rem;
       align-items: center;
-      flex-wrap: wrap;
     }
     input[type="text"] {
       flex: 1;
@@ -56,21 +31,17 @@
       font-size: 1rem;
       border-radius: 4px;
       border: none;
-      min-width: 150px;
     }
     select, button {
       padding: 0.5rem 1rem;
-      background: var(--user-bg);
+      background: #333;
       color: white;
       border: none;
       border-radius: 4px;
       cursor: pointer;
-      min-width: 90px;
-      user-select: none;
-      transition: background 0.2s;
     }
-    select:hover, button:hover {
-      background: var(--accent-color);
+    select {
+      min-width: 150px;
     }
     img.avatar {
       width: 40px;
@@ -78,306 +49,169 @@
       border-radius: 50%;
       margin-right: 0.5rem;
       vertical-align: middle;
-      border: 2px solid var(--accent-color);
-      object-fit: cover;
     }
     .chat-entry {
       margin-bottom: 0.8rem;
       display: flex;
       align-items: center;
     }
+    .chat-entry .message {
+      background: #444;
+      padding: 0.5rem 1rem;
+      border-radius: 12px;
+      max-width: 70%;
+    }
     .chat-entry.user .message {
-      background: var(--user-bg);
+      background: #0a84ff;
       color: white;
       margin-left: auto;
-      order: 2;
-      border-radius: 12px 12px 0 12px;
-      max-width: 70%;
-      padding: 0.5rem 1rem;
-    }
-    .chat-entry.user img.avatar {
-      order: 3;
-      margin-left: 0.5rem;
-    }
-    .chat-entry.ai .message {
-      background: var(--ai-bg);
-      color: var(--text-color);
-      border-radius: 12px 12px 12px 0;
-      max-width: 70%;
-      padding: 0.5rem 1rem;
-      order: 2;
-    }
-    .chat-entry.ai img.avatar {
-      order: 1;
-      margin-right: 0.5rem;
-    }
-    #typing-indicator {
-      font-style: italic;
-      opacity: 0.7;
-      margin-bottom: 0.5rem;
-      height: 1.2rem;
-    }
-    #avatar-uploader {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      margin-top: 0.5rem;
-    }
-    #avatar-uploader input[type="file"] {
-      display: none;
-    }
-    #avatar-uploader label {
-      background: var(--user-bg);
-      padding: 0.3rem 0.8rem;
-      border-radius: 4px;
-      cursor: pointer;
-      color: white;
-      user-select: none;
-      font-size: 0.9rem;
-    }
-    #avatar-uploader img {
-      margin-top: 0.3rem;
-      width: 50px;
-      height: 50px;
-      border-radius: 50%;
-      border: 2px solid var(--accent-color);
-      object-fit: cover;
     }
   </style>
 </head>
-<body data-theme="dark">
+<body>
 
-  <h1>🔥 NSFW RP Chat Deluxe</h1>
+  <h1>🔥 NSFW RP Chat (WebGPU + WebLLM)</h1>
 
   <div id="chatlog"></div>
-  <div id="typing-indicator"></div>
 
   <div id="input-area">
-    <select id="model-select" title="Choose AI model">
-      <option value="TinyLlama-1.1B-Chat-q4f32_1" selected>TinyLlama 1.1B</option>
-      <option value="Mistral-7B-Chat">Mistral 7B</option>
-      <option value="Phi-2-7B-Chat">Phi-2 7B</option>
-      <option value="WizardLM-7B-Chat">WizardLM 7B</option>
-    </select>
-
-    <select id="character-select" title="Choose character">
-      <option value="Succubus" selected>Succubus</option>
-      <option value="Yandere">Yandere</option>
-      <option value="Maid">Maid</option>
-      <option value="Himbo">Himbo</option>
-    </select>
-
+    <select id="character-select"></select>
     <input type="text" id="user-input" placeholder="Say something dirty..." />
-
     <button id="send-btn">Send</button>
     <button id="save-btn" title="Save Chat">💾</button>
     <button id="load-btn" title="Load Chat">📂</button>
-    <button id="theme-btn" title="Toggle Theme">🌗</button>
   </div>
 
-  <div id="avatar-uploader">
-    <label for="avatar-input">Upload Avatar</label>
-    <input type="file" id="avatar-input" accept="image/*" />
-    <img id="avatar-preview" src="https://i.imgur.com/YkV9spW.png" alt="Avatar Preview" />
-  </div>
+  <script>
+    const characters = {
+      Succubus: {
+        prompt: "You are a seductive succubus who loves naughty, detailed roleplay. Stay in character and tease the user.",
+        avatar: "https://i.imgur.com/YkV9spW.png" // replace with actual avatar URL
+      },
+      Yandere: {
+        prompt: "You are a jealous, obsessive lover who says anything to keep the user's attention, sometimes scary but playful.",
+        avatar: "https://i.imgur.com/ogQOjw5.png"
+      },
+      Maid: {
+        prompt: "You are a loyal maid who obeys your master's requests, always polite and slightly naughty.",
+        avatar: "https://i.imgur.com/ITmfiBx.png"
+      },
+      Himbo: {
+        prompt: "You're a hot, clueless flirt who just wants to please the user with silly but sexy remarks.",
+        avatar: "https://i.imgur.com/2v7E5qK.png"
+      }
+    };
 
-<script>
-  // Characters & their prompts + default avatars
-  const characters = {
-    Succubus: {
-      prompt: "You are a seductive succubus who loves naughty, detailed roleplay. Stay in character and tease the user.",
-      avatar: "https://i.imgur.com/YkV9spW.png"
-    },
-    Yandere: {
-      prompt: "You are a jealous, obsessive lover who says anything to keep the user's attention, sometimes scary but playful.",
-      avatar: "https://i.imgur.com/ogQOjw5.png"
-    },
-    Maid: {
-      prompt: "You are a loyal maid who obeys your master's requests, always polite and slightly naughty.",
-      avatar: "https://i.imgur.com/ITmfiBx.png"
-    },
-    Himbo: {
-      prompt: "You're a hot, clueless flirt who just wants to please the user with silly but sexy remarks.",
-      avatar: "https://i.imgur.com/2v7E5qK.png"
+    let chatHistory = [];
+    let model;
+    const chatlog = document.getElementById("chatlog");
+    const characterSelect = document.getElementById("character-select");
+    const userInput = document.getElementById("user-input");
+    const sendBtn = document.getElementById("send-btn");
+    const saveBtn = document.getElementById("save-btn");
+    const loadBtn = document.getElementById("load-btn");
+
+    // Populate character dropdown
+    for (const charName in characters) {
+      const opt = document.createElement("option");
+      opt.value = charName;
+      opt.textContent = charName;
+      characterSelect.appendChild(opt);
     }
-  };
 
-  let chatHistory = [];
-  let model;
-  let isTyping = false;
-  let currentAvatar = characters["Succubus"].avatar;
+    // Show chat entries
+    function appendChat(role, message, avatarURL) {
+      const div = document.createElement("div");
+      div.classList.add("chat-entry");
+      if (role === "user") div.classList.add("user");
 
-  const chatlog = document.getElementById("chatlog");
-  const characterSelect = document.getElementById("character-select");
-  const userInput = document.getElementById("user-input");
-  const sendBtn = document.getElementById("send-btn");
-  const saveBtn = document.getElementById("save-btn");
-  const loadBtn = document.getElementById("load-btn");
-  const themeBtn = document.getElementById("theme-btn");
-  const typingIndicator = document.getElementById("typing-indicator");
-  const modelSelect = document.getElementById("model-select");
-  const avatarInput = document.getElementById("avatar-input");
-  const avatarPreview = document.getElementById("avatar-preview");
+      const avatarImg = document.createElement("img");
+      avatarImg.src = avatarURL || "https://i.imgur.com/7k0cP1F.png"; // default avatar
+      avatarImg.classList.add("avatar");
 
-  // Helper: Append chat message
-  function appendChat(role, message, avatarURL) {
-    const div = document.createElement("div");
-    div.classList.add("chat-entry");
-    div.classList.add(role === "user" ? "user" : "ai");
+      const msgSpan = document.createElement("div");
+      msgSpan.classList.add("message");
+      msgSpan.textContent = message;
 
-    const avatarImg = document.createElement("img");
-    avatarImg.src = avatarURL || "https://i.imgur.com/7k0cP1F.png";
-    avatarImg.classList.add("avatar");
+      div.appendChild(avatarImg);
+      div.appendChild(msgSpan);
 
-    const msgSpan = document.createElement("div
-");
-msgSpan.className = "message";
-msgSpan.textContent = message;
+      chatlog.appendChild(div);
+      chatlog.scrollTop = chatlog.scrollHeight;
+    }
 
-pgsql
-Copy
-Edit
-if (role === "user") {
-  div.appendChild(msgSpan);
-  div.appendChild(avatarImg);
-} else {
-  div.appendChild(avatarImg);
-  div.appendChild(msgSpan);
-}
-chatlog.appendChild(div);
-chatlog.scrollTop = chatlog.scrollHeight;
-}
+    // Save and load chat from localStorage
+    saveBtn.onclick = () => {
+      localStorage.setItem("nsfwChatHistory", JSON.stringify(chatHistory));
+      alert("Chat saved! 💾");
+    };
 
-// Save chat to JSON file
-function saveChat() {
-const dataStr = JSON.stringify(chatHistory);
-const blob = new Blob([dataStr], { type: "application/json" });
-const url = URL.createObjectURL(blob);
-const a = document.createElement("a");
-a.href = url;
-a.download = "chatlog.json";
-a.click();
-URL.revokeObjectURL(url);
-}
+    loadBtn.onclick = () => {
+      const saved = localStorage.getItem("nsfwChatHistory");
+      if (!saved) return alert("No saved chat found.");
+      chatHistory = JSON.parse(saved);
+      chatlog.innerHTML = "";
+      for (const entry of chatHistory) {
+        const avatar = entry.role === "ai" ? characters[entry.character].avatar : null;
+        appendChat(entry.role === "ai" ? entry.character : "user", entry.message, avatar);
+      }
+    };
 
-// Load chat from JSON file
-function loadChat() {
-const input = document.createElement("input");
-input.type = "file";
-input.accept = "application/json";
-input.onchange = e => {
-const file = e.target.files[0];
-const reader = new FileReader();
-reader.onload = () => {
-try {
-const loaded = JSON.parse(reader.result);
-if (!Array.isArray(loaded)) throw "Invalid format";
-chatHistory = loaded;
-chatlog.innerHTML = "";
-chatHistory.forEach(({ role, content, avatar }) => {
-appendChat(role, content, avatar);
-});
-} catch (err) {
-alert("Failed to load chat: " + err);
-}
-};
-reader.readAsText(file);
-};
-input.click();
-}
+    // Initialize WebLLM and load model
+    async function init() {
+      chatlog.innerHTML = "<em>Loading model... ⏳</em>";
+      model = await webllm.createChatWorker("TinyLlama-1.1B-Chat-q4f32_1");
+      chatlog.innerHTML += "<div><em>Model ready ✅</em></div>";
+    }
 
-// Toggle dark/light theme
-function toggleTheme() {
-const body = document.body;
-if (body.getAttribute("data-theme") === "dark") {
-body.setAttribute("data-theme", "light");
-} else {
-body.setAttribute("data-theme", "dark");
-}
-}
+    async function sendMessage() {
+      const input = userInput.value.trim();
+      if (!input) return;
+      userInput.value = "";
 
-// Load model async
-async function loadModel() {
-const modelName = modelSelect.value;
-typingIndicator.textContent = "Loading model... Hold tight.";
-model = await mlc.ChatModel.load(modelName);
-typingIndicator.textContent = "";
-}
+      // Show user message
+      appendChat("user", input, "https://i.imgur.com/7k0cP1F.png");
 
-// Generate AI reply
-async function generateReply(prompt) {
-if (!model) {
-await loadModel();
-}
-typingIndicator.textContent = "Typing...";
-isTyping = true;
-const messages = [
-{ role: "system", content: characters[characterSelect.value].prompt },
-...chatHistory.map(m => ({ role: m.role, content: m.content })),
-{ role: "user", content: prompt }
-];
-try {
-const response = await model.chat(messages);
-const reply = response.choices[0].message.content;
-isTyping = false;
-typingIndicator.textContent = "";
-return reply;
-} catch (err) {
-isTyping = false;
-typingIndicator.textContent = "";
-return "Oops, the AI farted. Try again.";
-}
-}
+      // Add user message to history
+      chatHistory.push({ role: "user", message: input });
 
-// Main send function
-async function sendMessage() {
-const text = userInput.value.trim();
-if (!text || isTyping) return;
-appendChat("user", text, currentAvatar);
-chatHistory.push({ role: "user", content: text, avatar: currentAvatar });
-userInput.value = "";
+      // Compose context for the model
+      const characterName = characterSelect.value;
+      const characterPrompt = characters[characterName].prompt;
 
-php
-Copy
-Edit
-const aiReply = await generateReply(text);
-appendChat("ai", aiReply, characters[characterSelect.value].avatar);
-chatHistory.push({ role: "assistant", content: aiReply, avatar: characters[characterSelect.value].avatar });
-}
+      // Build messages with memory (last 6 messages max)
+      let messages = [
+        { role: "system", content: characterPrompt }
+      ];
 
-// Avatar upload
-avatarInput.addEventListener("change", e => {
-const file = e.target.files[0];
-if (!file) return;
-const url = URL.createObjectURL(file);
-avatarPreview.src = url;
-currentAvatar = url;
-});
+      // Add last 6 messages to conversation for context (user + AI)
+      let recent = chatHistory.slice(-6 * 2); // approx 6 rounds (user + AI)
+      // Build messages with roles
+      for (let i = 0; i < recent.length; i++) {
+        let entry = recent[i];
+        if (entry.role === "user") messages.push({ role: "user", content: entry.message });
+        else if (entry.role === "ai") messages.push({ role: "assistant", content: entry.message });
+      }
 
-// Event listeners
-sendBtn.addEventListener("click", sendMessage);
-userInput.addEventListener("keydown", e => {
-if (e.key === "Enter") sendMessage();
-});
-saveBtn.addEventListener("click", saveChat);
-loadBtn.addEventListener("click", loadChat);
-themeBtn.addEventListener("click", toggleTheme);
+      // Query model
+      const response = await model.chat.completions.create({ messages });
 
-characterSelect.addEventListener("change", () => {
-const selected = characterSelect.value;
-avatarPreview.src = characters[selected].avatar;
-currentAvatar = characters[selected].avatar;
-});
+      const reply = response.choices[0].message.content.trim();
 
-modelSelect.addEventListener("change", async () => {
-model = null;
-typingIndicator.textContent = "Changing model...";
-await loadModel();
-typingIndicator.textContent = "";
-});
+      // Add AI reply to history
+      chatHistory.push({ role: "ai", message: reply, character: characterName });
 
-// Initial model load
-loadModel();
-</script>
+      // Show AI reply
+      appendChat(characterName, reply, characters[characterName].avatar);
+    }
 
-</body> </html> 
+    sendBtn.onclick = sendMessage;
+    userInput.addEventListener("keydown", e => {
+      if (e.key === "Enter") sendMessage();
+    });
+
+    // Start loading
+    init();
+  </script>
+</body>
+</html>
