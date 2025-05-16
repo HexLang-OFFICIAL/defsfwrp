@@ -1,33 +1,77 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>MiniGPT++ (Offline AI Chat)</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <script src="https://cdn.jsdelivr.net/npm/@xenova/transformers/dist/transformers.min.js"></script>
+  <meta charset="UTF-8" />
+  <title>Xenova GPT-2 Minimal Chat</title>
   <style>
-    body { font-family: sans-serif; padding: 1em; }
-    .chat-log { border: 1px solid #ccc; padding: 1em; height: 300px; overflow-y: auto; background: #f9f9f9; }
-    .user { color: blue; margin-bottom: 0.5em; }
-    .bot { color: green; margin-bottom: 1em; }
-    textarea { width: 100%; }
+    body { background: #222; color: #eee; font-family: monospace; padding: 1rem; }
+    #log { white-space: pre-wrap; max-height: 70vh; overflow-y: auto; border: 1px solid #444; padding: 1rem; border-radius: 6px; background: #333; }
+    input, button { font-size: 1rem; padding: 0.5rem; margin-top: 1rem; width: 100%; border-radius: 6px; border: none; }
+    button { background: #4caf50; color: white; cursor: pointer; }
   </style>
 </head>
 <body>
-  <h2>MiniGPT++ (Offline AI Chat)</h2>
 
-  <label for="model-select">Choose model:</label>
-  <select id="model-select">
-    <option value="Xenova/gpt2">GPT-2</option>
-    <option value="Xenova/distilgpt2">DistilGPT2</option>
-    <option value="Xenova/phi-1_5">Phi-1.5 (smarter)</option>
-  </select>
-  <button onclick="loadSelectedModel()">Load Model</button>
+<h1>Xenova GPT-2 Minimal Chat</h1>
+<div id="log">Loading model... hold tight!</div>
 
-  <div class="chat-log" id="chat-log"></div>
+<input type="text" id="prompt" placeholder="Say something..." disabled />
+<button id="sendBtn" disabled>Send</button>
 
-  <textarea id="user-input" rows="3" placeholder="Say something..."></textarea><br>
-  <button onclick="chat()">Send</button>
+<script type="module">
+  import { pipeline } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.3.0/dist/transformers.min.js';
 
-  <script src="main.js"></script>
+  const log = document.getElementById('log');
+  const promptInput = document.getElementById('prompt');
+  const sendBtn = document.getElementById('sendBtn');
+
+  let generator;
+
+  function logMessage(msg) {
+    log.textContent += '\n' + msg;
+    log.scrollTop = log.scrollHeight;
+  }
+
+  async function loadModel() {
+    try {
+      generator = await pipeline('text-generation', 'xenova/gpt2');
+      logMessage('Model loaded! You can chat now.');
+      promptInput.disabled = false;
+      sendBtn.disabled = false;
+      promptInput.focus();
+    } catch (e) {
+      logMessage('Failed to load model: ' + e.message);
+    }
+  }
+
+  sendBtn.onclick = async () => {
+    const text = promptInput.value.trim();
+    if (!text) return;
+    logMessage('You: ' + text);
+    promptInput.value = '';
+    promptInput.disabled = true;
+    sendBtn.disabled = true;
+
+    try {
+      const output = await generator(text, {
+        max_length: 100,
+        do_sample: true,
+        top_p: 0.9,
+        temperature: 0.8,
+      });
+      const response = output[0].generated_text.slice(text.length).trim();
+      logMessage('AI: ' + (response || '[no response]'));
+    } catch (e) {
+      logMessage('Error generating response: ' + e.message);
+    } finally {
+      promptInput.disabled = false;
+      sendBtn.disabled = false;
+      promptInput.focus();
+    }
+  };
+
+  loadModel();
+</script>
+
 </body>
 </html>
