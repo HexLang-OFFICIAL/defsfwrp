@@ -211,7 +211,15 @@
     });
 
     // Start loading
-    init();
+    window.addEventListener("load", async () => {
+  if (typeof mlc === "undefined") {
+    alert("Failed to load WebLLM library! Check your internet or URL.");
+    return;
+  }
+  chatlog.innerHTML = "<em>Loading model... ⏳</em>";
+  model = await mlc.llm.createChatWorker("TinyLlama-1.1B-Chat-q4f32_1");
+  chatlog.innerHTML += "<div><em>Model ready ✅</em></div>";
+});
   </script>
 </body>
 </html>
