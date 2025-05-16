@@ -2,20 +2,20 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Xenova GPT-2 Minimal Chat</title>
+  <title>DistilGPT-2 Chatbot</title>
   <style>
-    body { background: #222; color: #eee; font-family: monospace; padding: 1rem; }
-    #log { white-space: pre-wrap; max-height: 70vh; overflow-y: auto; border: 1px solid #444; padding: 1rem; border-radius: 6px; background: #333; }
+    body { background: #1a1a1a; color: #eee; font-family: monospace; padding: 1rem; }
+    #log { white-space: pre-wrap; max-height: 70vh; overflow-y: auto; border: 1px solid #444; padding: 1rem; border-radius: 6px; background: #262626; }
     input, button { font-size: 1rem; padding: 0.5rem; margin-top: 1rem; width: 100%; border-radius: 6px; border: none; }
-    button { background: #4caf50; color: white; cursor: pointer; }
+    button { background: #6c47ff; color: white; cursor: pointer; }
   </style>
 </head>
 <body>
 
-<h1>Xenova GPT-2 Minimal Chat</h1>
-<div id="log">Loading model... hold tight!</div>
+<h1>DistilGPT-2 Web Chat</h1>
+<div id="log">Loading model... please wait</div>
 
-<input type="text" id="prompt" placeholder="Say something..." disabled />
+<input type="text" id="prompt" placeholder="Type a message..." disabled />
 <button id="sendBtn" disabled>Send</button>
 
 <script type="module">
@@ -26,15 +26,22 @@
   const sendBtn = document.getElementById('sendBtn');
 
   let generator;
+  let chatHistory = [];
 
   function logMessage(msg) {
     log.textContent += '\n' + msg;
     log.scrollTop = log.scrollHeight;
   }
 
+  function formatChatPrompt(userInput) {
+    // Keep it under control with clear roles
+    chatHistory.push(`User: ${userInput}`);
+    return chatHistory.slice(-6).join('\n') + `\nAI:`; // last 3 exchanges
+  }
+
   async function loadModel() {
     try {
-      generator = await pipeline('text-generation', 'xenova/gpt2');
+      generator = await pipeline('text-generation', 'xenova/distilgpt2');
       logMessage('Model loaded! You can chat now.');
       promptInput.disabled = false;
       sendBtn.disabled = false;
@@ -52,15 +59,23 @@
     promptInput.disabled = true;
     sendBtn.disabled = true;
 
+    const promptText = formatChatPrompt(text);
+
     try {
-      const output = await generator(text, {
-        max_length: 100,
+      const output = await generator(promptText, {
+        max_new_tokens: 60,
         do_sample: true,
-        top_p: 0.9,
-        temperature: 0.8,
+        top_p: 0.85,        // tighter than 0.9
+        temperature: 0.6,   // more "sane"
+        repetition_penalty: 1.2,  // avoids looping
+        stop: ['\nUser:']   // cuts off when it thinks it's your turn
       });
-      const response = output[0].generated_text.slice(text.length).trim();
+
+      let raw = output[0].generated_text;
+      let response = raw.slice(promptText.length).trim().split('\n')[0]; // get only the first response line
+
       logMessage('AI: ' + (response || '[no response]'));
+      chatHistory.push(`AI: ${response}`);
     } catch (e) {
       logMessage('Error generating response: ' + e.message);
     } finally {
