@@ -4,9 +4,16 @@ let history = "";
 async function loadSelectedModel() {
   const selected = document.getElementById('model-select').value;
   logBot(`Loading ${selected}...`);
-  pipeline = await window.transformers.pipeline("text-generation", selected);
-  logBot(`Model ${selected} ready. Say something!`);
+
+  try {
+    pipeline = await window.transformers.pipeline("text-generation", selected);
+    logBot(`Model ${selected} ready. Say something!`);
+  } catch (err) {
+    console.error("MODEL LOAD ERROR:", err);
+    logBot("❌ Failed to load model: " + err.message);
+  }
 }
+
 
 function logUser(text) {
   const chatLog = document.getElementById('chat-log');
