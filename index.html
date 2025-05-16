@@ -2,166 +2,139 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>NSFW RP Chat with WebGPU & WebLLM</title>
-  <script src="https://unpkg.com/@mlc-ai/web-llm@latest/dist/index.min.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🔥 NSFW RP Chat - Xenova Edition</title>
   <style>
     body {
+      font-family: 'Segoe UI', sans-serif;
       background: #111;
       color: #eee;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      margin: 0; padding: 1rem;
-      display: flex; flex-direction: column; height: 100vh;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
     }
-    #chatlog {
+
+    #chat-log {
       flex: 1;
       overflow-y: auto;
-      background: #222;
-      padding: 1rem;
-      border-radius: 8px;
-      margin-bottom: 1rem;
-    }
-    #input-area {
+      padding: 1em;
+      background: #1e1e1e;
       display: flex;
-      gap: 0.5rem;
-      align-items: center;
+      flex-direction: column;
     }
-    input[type="text"] {
-      flex: 1;
-      padding: 0.5rem;
-      font-size: 1rem;
-      border-radius: 4px;
-      border: none;
+
+    .entry {
+      display: flex;
+      align-items: flex-start;
+      margin-bottom: 1em;
     }
-    select, button {
-      padding: 0.5rem 1rem;
-      background: #333;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-    select {
-      min-width: 150px;
-    }
-    img.avatar {
+
+    .entry img {
       width: 40px;
       height: 40px;
       border-radius: 50%;
-      margin-right: 0.5rem;
-      vertical-align: middle;
+      margin-right: 0.5em;
     }
-    .chat-entry {
-      margin-bottom: 0.8rem;
-      display: flex;
-      align-items: center;
-    }
-    .chat-entry .message {
-      background: #444;
-      padding: 0.5rem 1rem;
-      border-radius: 12px;
+
+    .bubble {
+      background: #333;
+      padding: 0.75em 1em;
+      border-radius: 10px;
       max-width: 70%;
     }
-    .chat-entry.user .message {
+
+    .entry.user .bubble {
       background: #0a84ff;
       color: white;
       margin-left: auto;
+      margin-right: 0;
+      order: 2;
+    }
+
+    .entry.user img {
+      order: 3;
+      margin-left: 0.5em;
+      margin-right: 0;
+    }
+
+    #input-bar {
+      display: flex;
+      padding: 0.5em;
+      background: #222;
+      gap: 0.5em;
+    }
+
+    #user-input {
+      flex: 1;
+      padding: 0.5em;
+      border: none;
+      background: #333;
+      color: white;
+    }
+
+    select, button {
+      background: #444;
+      color: white;
+      border: none;
+      padding: 0.5em 1em;
+      cursor: pointer;
+    }
+
+    select:hover, button:hover {
+      background: #666;
     }
   </style>
-</head>
-<body>
 
-  <h1>🔥 NSFW RP Chat (WebGPU + WebLLM)</h1>
+  <script type="module">
+    import { pipeline } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.5.0';
 
-  <div id="chatlog"></div>
-
-  <div id="input-area">
-    <select id="character-select"></select>
-    <input type="text" id="user-input" placeholder="Say something dirty..." />
-    <button id="send-btn">Send</button>
-    <button id="save-btn" title="Save Chat">💾</button>
-    <button id="load-btn" title="Load Chat">📂</button>
-  </div>
-
-  <script>
-    const characters = {
-      Succubus: {
-        prompt: "You are a seductive succubus who loves naughty, detailed roleplay. Stay in character and tease the user.",
-        avatar: "https://i.imgur.com/YkV9spW.png" // replace with actual avatar URL
-      },
-      Yandere: {
-        prompt: "You are a jealous, obsessive lover who says anything to keep the user's attention, sometimes scary but playful.",
-        avatar: "https://i.imgur.com/ogQOjw5.png"
-      },
-      Maid: {
-        prompt: "You are a loyal maid who obeys your master's requests, always polite and slightly naughty.",
-        avatar: "https://i.imgur.com/ITmfiBx.png"
-      },
-      Himbo: {
-        prompt: "You're a hot, clueless flirt who just wants to please the user with silly but sexy remarks.",
-        avatar: "https://i.imgur.com/2v7E5qK.png"
-      }
+    const avatars = {
+      "Succubus": "https://i.imgur.com/YkV9spW.png",
+      "Yandere": "https://i.imgur.com/ogQOjw5.png",
+      "Maid": "https://i.imgur.com/ITmfiBx.png",
+      "Himbo": "https://i.imgur.com/2v7E5qK.png",
+      "User": "https://i.imgur.com/7k0cP1F.png"
     };
 
+    const characterPrompts = {
+      "Succubus": "You are a seductive succubus who loves steamy, naughty conversations.",
+      "Yandere": "You are a jealous, obsessive lover who will say anything to keep the user's attention.",
+      "Maid": "You are a loyal maid who always obeys your master's requests, no matter how lewd.",
+      "Himbo": "You're a hot, clueless flirt who just wants to please the user."
+    };
+
+    let generator, selectedCharacter = "Succubus";
     let chatHistory = [];
-    let model;
-    const chatlog = document.getElementById("chatlog");
-    const characterSelect = document.getElementById("character-select");
-    const userInput = document.getElementById("user-input");
+
+    const chatLog = document.getElementById("chat-log");
     const sendBtn = document.getElementById("send-btn");
+    const userInput = document.getElementById("user-input");
+    const charSelect = document.getElementById("char-select");
     const saveBtn = document.getElementById("save-btn");
     const loadBtn = document.getElementById("load-btn");
 
-    // Populate character dropdown
-    for (const charName in characters) {
-      const opt = document.createElement("option");
-      opt.value = charName;
-      opt.textContent = charName;
-      characterSelect.appendChild(opt);
+    function appendEntry(role, message, avatarURL) {
+      const entry = document.createElement("div");
+      entry.className = `entry ${role}`;
+
+      const img = document.createElement("img");
+      img.src = avatarURL || avatars[role];
+
+      const bubble = document.createElement("div");
+      bubble.className = "bubble";
+      bubble.textContent = message;
+
+      entry.appendChild(img);
+      entry.appendChild(bubble);
+      chatLog.appendChild(entry);
+      chatLog.scrollTop = chatLog.scrollHeight;
     }
 
-    // Show chat entries
-    function appendChat(role, message, avatarURL) {
-      const div = document.createElement("div");
-      div.classList.add("chat-entry");
-      if (role === "user") div.classList.add("user");
-
-      const avatarImg = document.createElement("img");
-      avatarImg.src = avatarURL || "https://i.imgur.com/7k0cP1F.png"; // default avatar
-      avatarImg.classList.add("avatar");
-
-      const msgSpan = document.createElement("div");
-      msgSpan.classList.add("message");
-      msgSpan.textContent = message;
-
-      div.appendChild(avatarImg);
-      div.appendChild(msgSpan);
-
-      chatlog.appendChild(div);
-      chatlog.scrollTop = chatlog.scrollHeight;
-    }
-
-    // Save and load chat from localStorage
-    saveBtn.onclick = () => {
-      localStorage.setItem("nsfwChatHistory", JSON.stringify(chatHistory));
-      alert("Chat saved! 💾");
-    };
-
-    loadBtn.onclick = () => {
-      const saved = localStorage.getItem("nsfwChatHistory");
-      if (!saved) return alert("No saved chat found.");
-      chatHistory = JSON.parse(saved);
-      chatlog.innerHTML = "";
-      for (const entry of chatHistory) {
-        const avatar = entry.role === "ai" ? characters[entry.character].avatar : null;
-        appendChat(entry.role === "ai" ? entry.character : "user", entry.message, avatar);
-      }
-    };
-
-    // Initialize WebLLM and load model
-    async function init() {
-      chatlog.innerHTML = "<em>Loading model... ⏳</em>";
-      model = await mlc.llm.createChatWorker("TinyLlama-1.1B-Chat-q4f32_1");
-      chatlog.innerHTML += "<div><em>Model ready ✅</em></div>";
+    async function setup() {
+      appendEntry("ai", "Loading model... ⏳", avatars[selectedCharacter]);
+      generator = await pipeline("text-generation", "Xenova/distilgpt2");
+      appendEntry("ai", "Model loaded ✅", avatars[selectedCharacter]);
     }
 
     async function sendMessage() {
@@ -169,57 +142,72 @@
       if (!input) return;
       userInput.value = "";
 
-      // Show user message
-      appendChat("user", input, "https://i.imgur.com/7k0cP1F.png");
+      chatHistory.push({ role: "user", content: input });
+      appendEntry("user", input, avatars["User"]);
 
-      // Add user message to history
-      chatHistory.push({ role: "user", message: input });
+      const historyText = chatHistory.slice(-6).map(h =>
+        `${h.role === "user" ? "User" : "AI"}: ${h.content}`
+      ).join("\n");
 
-      // Compose context for the model
-      const characterName = characterSelect.value;
-      const characterPrompt = characters[characterName].prompt;
+      const prompt = `${characterPrompts[selectedCharacter]}\n${historyText}\nAI:`;
 
-      // Build messages with memory (last 6 messages max)
-      let messages = [
-        { role: "system", content: characterPrompt }
-      ];
+      const output = await generator(prompt, {
+        max_new_tokens: 120,
+        temperature: 0.95,
+        top_k: 50,
+        repetition_penalty: 1.2,
+      });
 
-      // Add last 6 messages to conversation for context (user + AI)
-      let recent = chatHistory.slice(-6 * 2); // approx 6 rounds (user + AI)
-      // Build messages with roles
-      for (let i = 0; i < recent.length; i++) {
-        let entry = recent[i];
-        if (entry.role === "user") messages.push({ role: "user", content: entry.message });
-        else if (entry.role === "ai") messages.push({ role: "assistant", content: entry.message });
+      const reply = output[0].generated_text.split("AI:").pop().trim();
+      chatHistory.push({ role: "ai", content: reply, character: selectedCharacter });
+      appendEntry("ai", reply, avatars[selectedCharacter]);
+    }
+
+    function updateCharacter() {
+      selectedCharacter = charSelect.value;
+      appendEntry("ai", `Switched to ${selectedCharacter}.`, avatars[selectedCharacter]);
+    }
+
+    function saveChat() {
+      localStorage.setItem("chatHistory", JSON.stringify(chatHistory));
+      appendEntry("ai", "Chat saved 💾", avatars[selectedCharacter]);
+    }
+
+    function loadChat() {
+      const saved = localStorage.getItem("chatHistory");
+      if (!saved) return;
+      chatHistory = JSON.parse(saved);
+      chatLog.innerHTML = "";
+      for (const entry of chatHistory) {
+        const avatar = entry.role === "user" ? avatars["User"] : avatars[entry.character || selectedCharacter];
+        appendEntry(entry.role, entry.content, avatar);
       }
-
-      // Query model
-      const response = await model.chat.completions.create({ messages });
-
-      const reply = response.choices[0].message.content.trim();
-
-      // Add AI reply to history
-      chatHistory.push({ role: "ai", message: reply, character: characterName });
-
-      // Show AI reply
-      appendChat(characterName, reply, characters[characterName].avatar);
     }
 
     sendBtn.onclick = sendMessage;
-    userInput.addEventListener("keydown", e => {
+    saveBtn.onclick = saveChat;
+    loadBtn.onclick = loadChat;
+    charSelect.onchange = updateCharacter;
+    userInput.addEventListener("keydown", (e) => {
       if (e.key === "Enter") sendMessage();
     });
 
-    // Start loading
-    window.addEventListener("load", async () => {
-  if (typeof mlc === "undefined") {
-    alert("Failed to load WebLLM library! Check your internet or URL.");
-    return;
-  }
-  chatlog.innerHTML = "<em>Loading model... ⏳</em>";
-  model = await mlc.llm.createChatWorker("TinyLlama-1.1B-Chat-q4f32_1");
-  chatlog.innerHTML += "<div><em>Model ready ✅</em></div>";
-});
+    setup();
   </script>
+</head>
+<body>
+  <div id="chat-log"></div>
+  <div id="input-bar">
+    <select id="char-select">
+      <option value="Succubus">Succubus</option>
+      <option value="Yandere">Yandere</option>
+      <option value="Maid">Maid</option>
+      <option value="Himbo">Himbo</option>
+    </select>
+    <input type="text" id="user-input" placeholder="Say something naughty..." />
+    <button id="send-btn">Send</button>
+    <button id="save-btn">💾</button>
+    <button id="load-btn">📂</button>
+  </div>
 </body>
 </html>
