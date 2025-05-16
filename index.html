@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>SmolLM 360M Chatbot</title>
+  <title>SmolLM 360M Chatbot with Fallback</title>
   <style>
     body {
       background: #121212;
@@ -50,8 +50,8 @@
 </head>
 <body>
 
-<h1>SmolLM 360M Chatbot</h1>
-<div id="log">Loading model... please wait.</div>
+<h1>SmolLM 360M Chatbot with Fallback</h1>
+<div id="log">Checking for WebGPU support...</div>
 
 <div id="input-container">
   <input id="prompt" placeholder="Say something..." disabled autocomplete="off"/>
@@ -59,7 +59,7 @@
 </div>
 
 <script type="module">
-  import { pipeline } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.3.0/dist/transformers.min.js';
+  import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.3.0/dist/transformers.min.js';
 
   const log = document.getElementById('log');
   const promptInput = document.getElementById('prompt');
@@ -67,26 +67,34 @@
 
   let generator;
 
-  // Append text to chat log with auto scroll
   function appendLog(sender, text) {
     log.textContent += `\n${sender}: ${text}`;
     log.scrollTop = log.scrollHeight;
   }
 
-  async function loadModel() {
+  async function tryLoadModel() {
     try {
-      // This loads SmolLM 360M Instruct model with WebGPU backend
+      // First, check if browser supports WebGPU
+      if (navigator.gpu) {
+        log.textContent = 'WebGPU supported. Loading model with WebGPU backend...';
+        env.backends = ['webgpu', 'cpu']; // prioritize webgpu
+      } else {
+        log.textContent = 'WebGPU NOT supported. Falling back to CPU backend...';
+        env.backends = ['cpu']; // fallback to CPU
+      }
+
       generator = await pipeline('text-generation', 'HuggingFaceTB/SmolLM-360M-Instruct', {
         progress_callback(progress) {
           log.textContent = `Loading model... ${(progress * 100).toFixed(0)}%`;
-        }
+        },
       });
+
       appendLog('System', 'Model loaded! You can chat now.');
       promptInput.disabled = false;
       sendBtn.disabled = false;
       promptInput.focus();
     } catch (e) {
-      appendLog('System', 'Failed to load model: ' + e.message);
+      appendLog('System', `Failed to load model: ${e.message}`);
     }
   }
 
@@ -99,7 +107,6 @@
     sendBtn.disabled = true;
 
     try {
-      // Generate with tuned parameters for better responses
       const output = await generator(text, {
         max_new_tokens: 60,
         do_sample: true,
@@ -124,7 +131,7 @@
     }
   });
 
-  loadModel();
+  tryLoadModel();
 </script>
 
 </body>
