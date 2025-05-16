@@ -84,10 +84,14 @@
       }
 
       generator = await pipeline('text-generation', 'HuggingFaceTB/SmolLM-360M-Instruct', {
-        progress_callback(progress) {
-          log.textContent = `Loading model... ${(progress * 100).toFixed(0)}%`;
-        },
-      });
+  progress_callback(progress) {
+    if (typeof progress === 'number' && !isNaN(progress)) {
+      log.textContent = `Loading model... ${(progress * 100).toFixed(0)}%`;
+    } else {
+      log.textContent = `Loading model... please wait...`;
+    }
+  },
+});
 
       appendLog('System', 'Model loaded! You can chat now.');
       promptInput.disabled = false;
